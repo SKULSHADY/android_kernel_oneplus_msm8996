@@ -295,11 +295,8 @@ int mdss_dsi_panel_set_srgb_mode(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	int rc = 0;
 
 	rc = mdss_dsi_panel_set_mode(ctrl, &ctrl->srgb_on_cmds, &ctrl->srgb_off_cmds, level);
-	if (rc) {
-		pr_err("sRGB Mode On.\n");
-	} else {
-		pr_err("sRGB Mode off.\n");
-	}
+	if (rc)
+		pr_err("sRGB Mode %d.\n", level);
 
 	return 0;
 }
@@ -314,11 +311,8 @@ int mdss_dsi_panel_set_adobe_rgb_mode(struct mdss_dsi_ctrl_pdata *ctrl, int leve
 	int rc = 0;
 
 	rc = mdss_dsi_panel_set_mode(ctrl, &ctrl->Adobe_RGB_on_cmds, &ctrl->Adobe_RGB_off_cmds, level);
-	if (rc) {
-		pr_err("Adobe RGB Mode On.\n");
-	} else {
-		pr_err("Adobe RGB Mode off.\n");
-	}
+	if (rc)
+		pr_err("Adobe RGB Mode %d.\n", level);
 
 	return 0;
 }
@@ -333,11 +327,8 @@ int mdss_dsi_panel_set_dci_p3_mode(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	int rc = 0;
 
 	rc = mdss_dsi_panel_set_mode(ctrl, &ctrl->dci_p3_on_cmds, &ctrl->dci_p3_off_cmds, level);
-	if (rc) {
-		pr_err("DCI P3 Mode On.\n");
-	} else {
-		pr_err("DCI P3 Mode off.\n");
-	}
+	if (rc)
+		pr_err("DCI P3 Mode %d.\n", level);
 
 	return 0;
 }
@@ -352,11 +343,8 @@ int mdss_dsi_panel_set_night_mode(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	int rc = 0;
 
 	rc = mdss_dsi_panel_set_mode(ctrl, &ctrl->night_mode_on_cmds, &ctrl->night_mode_off_cmds, level);
-	if (rc) {
-		pr_err("Night Mode On.\n");
-	} else {
-		pr_err("Night Mode off.\n");
-	}
+	if (rc)
+		pr_err("Night Mode %d.\n", level);
 
 	return 0;
 }
@@ -371,11 +359,8 @@ int mdss_dsi_panel_set_oneplus_mode(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	int rc = 0;
 
 	rc = mdss_dsi_panel_set_mode(ctrl, &ctrl->oneplus_mode_on_cmds, &ctrl->oneplus_mode_off_cmds, level);
-	if (rc) {
-		pr_err("Oneplus Mode On.\n");
-	} else {
-		pr_err("Oneplus Mode off.\n");
-	}
+	if (rc)
+		pr_err("Oneplus Mode %d.\n", level);
 
 	return 0;
 }
@@ -987,11 +972,10 @@ int mdss_dsi_panel_set_hbm(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	int rc = 0;
 
 	rc = mdss_dsi_panel_set_mode(ctrl, &ctrl->hbm_on_cmds, &ctrl->hbm_off_cmds, level);
-	if (rc) {
-		pr_err("HBM Mode On.\n");
-	} else {
-		pr_err("HBM Mode off.\n");
-	}
+	if (rc)
+		pr_err("HBM Mode %d.\n", level);
+
+	hbm_status = level;
 
 	return 0;
 }
@@ -1008,30 +992,9 @@ enum brightness_setting_src_mask {
 #define DEFAULT_BRIGHTNESS_LEVEL 230
 #define MAX_BRIGHTNESS_LEVEL 255
 
-static int max_brightness_setting = DEFAULT_BRIGHTNESS_LEVEL;
 static int pre_brightness_setting = 0;
 static int brightness_setting_src = 0;
 static int brightness_setting_level = 0;
-
-/**********************************************
-remapping backlight 0-->55 to 0-->55
-remapping backlight 55-->230 to 55-->200
-remapping backlight 230-->255 to 200-->255
-**********************************************/
-static u32 backlight_remap(u32 level)
-{
-	u32 temp = 0;
-
-	if (level < 55) {
-		temp = level;
-	} else if ((level >= 55) && (level <= 230)){
-		temp = (level*29+330)/35;
-	} else {
-		temp = level*11/5-306;
-	}
-
-	return temp;
-}
 
 /*********************************************************************************
 int level;
@@ -1053,7 +1016,6 @@ int level;
 void mdss_dsi_panel_set_max_brightness(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 {
 	struct mdss_dsi_ctrl_pdata *pctrl = ctrl;
-	int pre_level = 0;
 	int bl_level = BRIGHTNESS_LEVEL_MASK & level;
 
 	if (pctrl->high_brightness_panel){ //only for 430nit panel auto brightness setting
@@ -1086,16 +1048,12 @@ void mdss_dsi_panel_set_max_brightness(struct mdss_dsi_ctrl_pdata *ctrl, int lev
 					break;
 				}
 			}
-			max_brightness_setting = DEFAULT_BRIGHTNESS_LEVEL;
-			pre_level = backlight_remap(pre_brightness_setting);
-			mdss_dsi_panel_bklt_dcs(pctrl, pre_level);
+			mdss_dsi_panel_bklt_dcs(pctrl, pre_brightness_setting);
 			brightness_setting_level &= ~0x01;
 			break;
 
 		case 1: //max brightness
-			max_brightness_setting = MAX_BRIGHTNESS_LEVEL;
-			pre_level = backlight_remap(pre_brightness_setting);
-			mdss_dsi_panel_bklt_dcs(pctrl, pre_level);
+			mdss_dsi_panel_bklt_dcs(pctrl, pre_brightness_setting);
 			brightness_setting_level |= 0x01;
 			//app can not disable hbm
 			if (level & (BRIGHTNESS_MASK_CAMERA | BRIGHTNESS_MASK_GALLERY)){
@@ -1155,11 +1113,8 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 
-	if (ctrl_pdata->high_brightness_panel){
-		pr_debug("%s: Adjusting for high brightness panel\n", __func__);
+	if (ctrl_pdata->high_brightness_panel)
 		pre_brightness_setting = bl_level;
-		bl_level = backlight_remap(bl_level);
-	}
 
 	/*
 	 * Some backlight controllers specify a minimum duty cycle
